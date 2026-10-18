@@ -164,10 +164,30 @@ jobs:
         working-directory: android
         run: |
           chmod +x ./gradlew
+          set -o pipefail
           ./gradlew --no-daemon --stacktrace --console=plain \
             :app:assembleRelease \
             -PDAVID_VERSION_CODE=${{ github.run_number }} \
-            -PDAVID_VERSION_NAME=1.0.${{ github.run_number }}
+            -PDAVID_VERSION_NAME=1.0.${{ github.run_number }} 2>&1 | tee "$GITHUB_WORKSPACE/build.log"
+
+      - name: Show first errors
+        if: failure()
+        run: |
+          set +e
+          {
+            echo '### First build errors'
+            echo '```'
+            grep -nE 'error:|fatal error|undefined reference|^e: |What went wrong|FAILED:|Execution failed' build.log | head -40
+            echo '```'
+            n=$(grep -nE 'error:|fatal error|undefined reference|^e: ' build.log | head -1 | cut -d: -f1)
+            if [ -n "$n" ]; then
+              echo '### Context of the first error'
+              echo '```'
+              s=$(( n > 6 ? n - 6 : 1 ))
+              sed -n "${s},$((n + 14))p" build.log
+              echo '```'
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Verify APK
         run: |
@@ -192,6 +212,7 @@ jobs:
         with:
           name: build-reports
           path: |
+            build.log
             android/app/build/reports
             android/app/.cxx/**/*.log
           if-no-files-found: ignore
