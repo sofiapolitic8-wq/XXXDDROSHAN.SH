@@ -1,7 +1,7 @@
 #ifndef TWINDOW_H
 #define TWINDOW_H
 
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
 #include <SDL3/SDL.h>
 
 /* Keep the desktop key-code contract so settings remain portable. */
@@ -51,8 +51,8 @@
 #define GLFW_MOUSE_BUTTON_LEFT 0
 #define GLFW_MOUSE_BUTTON_RIGHT 1
 #define GLFW_MOUSE_BUTTON_MIDDLE 2
-#ifdef WYRM_DESKTOP
-/* WYRM_DESKTOP: keys a computer has beyond the phone list, and the mouse's
+#ifdef DAVID_DESKTOP
+/* DAVID_DESKTOP: keys a computer has beyond the phone list, and the mouse's
    other buttons as keys (above GLFW's last key, 348), so any of them can be
    bound to an action. The left button stays boost and is never a key. */
 #define GLFW_KEY_TAB 258
@@ -69,11 +69,11 @@
 #define GLFW_KEY_F12 301
 #define GLFW_KEY_LEFT_SHIFT 340
 #define GLFW_KEY_LEFT_CONTROL 341
-#define WYRM_KEY_MOUSE_RIGHT 401
-#define WYRM_KEY_MOUSE_MIDDLE 402
-#define WYRM_KEY_MOUSE_BACK 403
-#define WYRM_KEY_MOUSE_FORWARD 404
-#define WYRM_DESKTOP_KEY_SLOTS 512
+#define DAVID_KEY_MOUSE_RIGHT 401
+#define DAVID_KEY_MOUSE_MIDDLE 402
+#define DAVID_KEY_MOUSE_BACK 403
+#define DAVID_KEY_MOUSE_FORWARD 404
+#define DAVID_DESKTOP_KEY_SLOTS 512
 /* The next wheel turn went to a panel; it must not zoom. */
 void twindow_desktop_take_wheel(void);
 #endif
@@ -96,7 +96,7 @@ typedef void (*tresize_func)(tenv* env);
 typedef bool (*tevent_func)(const void* event);
 
 typedef struct twindow {
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
   SDL_Window* handle;
 #else
   GLFWwindow* handle;

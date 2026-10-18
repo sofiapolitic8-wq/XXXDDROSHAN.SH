@@ -17,3 +17,4 @@
 - Workflow: builds an optimized RELEASE APK (debug builds compile the C engine unoptimized and run slowly), signs it (repo secrets DAVID_KEYSTORE_BASE64 / DAVID_KEYSTORE_PASSWORD / DAVID_KEY_ALIAS / DAVID_KEY_PASSWORD, or a temporary key), authenticated Slang download with retries, verifies native libs + shaders + signature in the APK, uploads logs on failure.
 - Unit tests moved to the io.david.mobile package directory.
 - NOT VERIFIED: no Android SDK/NDK or network here, so nothing was compiled.
+- FIXED NATIVE BUILD: thermite sources still tested WYRM_SDL_JNI / WYRM_DESKTOP / WYRM_KEY_* while the rest of the engine and CMake used DAVID_*. On Android the SDL code path was therefore disabled in thermite and it fell back to <GLFW/glfw3.h> ("GLFW/glfw3.h file not found"). All WYRM_ macros renamed to DAVID_ (8 files in thermite/src). 43 of 54 C files now pass a host syntax check with the Android defines; the 11 JNI files could not be checked without jni.h.

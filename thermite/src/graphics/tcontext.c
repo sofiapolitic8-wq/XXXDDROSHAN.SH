@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
 #include <SDL3/SDL_vulkan.h>
 #include "platform/android_startup.h"
 #define TCONTEXT_LOG(...) SDL_Log(__VA_ARGS__)
@@ -24,7 +24,7 @@ static void tcontext_device_lost(tcontext* context, const char* where) {
 }
 
 void _tcontext_create_instance(tcontext* context) {
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
   Uint32 instance_ext_count = 0;
   const char* const* instance_ext_names =
       SDL_Vulkan_GetInstanceExtensions(&instance_ext_count);
@@ -57,7 +57,7 @@ void _tcontext_create_instance(tcontext* context) {
           .ppEnabledExtensionNames = instance_ext_names},
       NULL, &context->instance);
   TCONTEXT_LOG("Wyrm: vkCreateInstance=%d", (int)result);
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
   if (result == VK_SUCCESS) {
     android_startup_stage(4, "Vulkan instance created",
                           "Android Vulkan extensions were accepted");
@@ -71,7 +71,7 @@ void _tcontext_create_instance(tcontext* context) {
 
 bool _tcontext_create_surface(tcontext* context, twindow* window) {
   context->surface = VK_NULL_HANDLE;
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
   if (!SDL_Vulkan_CreateSurface(window->handle, context->instance, NULL,
                                 &context->surface)) {
     SDL_Log("Wyrm: Vulkan surface creation failed: %s", SDL_GetError());
@@ -95,7 +95,7 @@ int _tcontext_select_device(tcontext* context) {
                device_count);
   if (result != VK_SUCCESS || device_count == 0)
   {
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
     char detail[96];
     snprintf(detail, sizeof(detail),
              "vkEnumeratePhysicalDevices returned %d with %u devices",
@@ -262,7 +262,7 @@ int _tcontext_select_device(tcontext* context) {
     printf("No GPU found.\n");
     free(scores);
     free(devices);
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
     android_startup_failure(
         5, "No compatible Vulkan configuration",
         "No GPU exposed a graphics/present queue, surface format and swapchain");
@@ -281,7 +281,7 @@ int _tcontext_select_device(tcontext* context) {
                VK_API_VERSION_MAJOR(properties.apiVersion),
                VK_API_VERSION_MINOR(properties.apiVersion),
                VK_API_VERSION_PATCH(properties.apiVersion));
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
   char api_version[32];
   char gpu_detail[160];
   snprintf(api_version, sizeof(api_version), "%u.%u.%u",
@@ -331,7 +331,7 @@ void _tcontext_create_device(tcontext* context) {
               (const char*[]){VK_KHR_SWAPCHAIN_EXTENSION_NAME}},
       NULL, &context->device);
   TCONTEXT_LOG("Wyrm: vkCreateDevice=%d", (int)result);
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
   if (result == VK_SUCCESS) {
     android_startup_stage(6, "Logical render device ready",
                           "Graphics queue and VK_KHR_swapchain are available");
@@ -358,7 +358,7 @@ void _tcontext_create_swapchain(tcontext* context, bool vsync) {
     context->min_image_count = capabilities.maxImageCount;
 
   VkPresentModeKHR selected_present_mode = VK_PRESENT_MODE_FIFO_KHR;
-#ifndef WYRM_SDL_JNI
+#ifndef DAVID_SDL_JNI
   if (!vsync) {
     uint32_t count = 0;
     if (vkGetPhysicalDeviceSurfacePresentModesKHR(
@@ -421,7 +421,7 @@ void _tcontext_create_swapchain(tcontext* context, bool vsync) {
   // the surface supports it so the compositor does not rotate our landscape
   // render target a second time.
   VkSurfaceTransformFlagBitsKHR pre_transform = capabilities.currentTransform;
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
   if (capabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
     pre_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
   TCONTEXT_LOG("Wyrm: surface transform current=%u selected=%u supported=%u",
@@ -442,8 +442,8 @@ void _tcontext_create_swapchain(tcontext* context, bool vsync) {
           .imageColorSpace = context->surface_format.colorSpace,
           .imageExtent = capabilities.currentExtent,
           .imageArrayLayers = 1,
-#ifdef WYRM_DESKTOP
-          /* WYRM_DESKTOP: read back every frame for Compose. */
+#ifdef DAVID_DESKTOP
+          /* DAVID_DESKTOP: read back every frame for Compose. */
           .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                         VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
 #else
@@ -462,7 +462,7 @@ void _tcontext_create_swapchain(tcontext* context, bool vsync) {
                (int)result, capabilities.currentExtent.width,
                capabilities.currentExtent.height, context->min_image_count,
                (int)selected_present_mode);
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
   if (result == VK_SUCCESS) {
     char detail[128];
     snprintf(detail, sizeof(detail), "%u x %u · %u images · FIFO presentation",
@@ -720,7 +720,7 @@ VkShaderModule tcontext_create_shader(tcontext* context, const char* filename) {
                            .pCode = content,
                        },
                        NULL, &module);
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
   if (shader_result != VK_SUCCESS) {
     char detail[256];
     snprintf(detail, sizeof(detail), "%s · vkCreateShaderModule returned %d",
@@ -870,7 +870,7 @@ static void _tcontext_destroy_swapchain_resources(tcontext* context) {
 }
 
 bool tcontext_recreate_surface(tcontext* context, twindow* window, bool vsync) {
-#ifndef WYRM_SDL_JNI
+#ifndef DAVID_SDL_JNI
   tcontext_resize(context, window->size, vsync);
   return context->swapchain_ok;
 #else
@@ -1011,7 +1011,7 @@ void tcontext_clear(tcontext* context, const vec4 clear_color) {
       VK_SUBPASS_CONTENTS_INLINE);
 }
 
-#ifdef WYRM_DESKTOP
+#ifdef DAVID_DESKTOP
 /*
  * Wyrm Desktop: the finished swapchain image is copied into one host-visible
  * buffer inside the frame's own command buffer, and published to Compose once
@@ -1116,7 +1116,7 @@ void tcontext_end(tcontext* context) {
   tcontext_frame* fr = context->frames + context->current_frame;
 
   vkCmdEndRenderPass(fr->cmd);
-#ifdef WYRM_DESKTOP
+#ifdef DAVID_DESKTOP
   desktop_capture_record(context, fr->cmd);
 #endif
   vkEndCommandBuffer(fr->cmd);
@@ -1139,7 +1139,7 @@ void tcontext_end(tcontext* context) {
   if (submit_result == VK_ERROR_DEVICE_LOST)
     tcontext_device_lost(context, "submit");
   if (submit_result != VK_SUCCESS) {
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
     char detail[96];
     snprintf(detail, sizeof(detail), "vkQueueSubmit returned %d",
              (int)submit_result);
@@ -1176,10 +1176,10 @@ void tcontext_end(tcontext* context) {
   }
   context->last_present_succeeded =
       (r == VK_SUCCESS || r == VK_SUBOPTIMAL_KHR);
-#ifdef WYRM_DESKTOP
+#ifdef DAVID_DESKTOP
   desktop_capture_publish(context, fr->wait_fence);
 #endif
-#ifdef WYRM_SDL_JNI
+#ifdef DAVID_SDL_JNI
   if (!context->last_present_succeeded && r != VK_ERROR_SURFACE_LOST_KHR &&
       r != VK_ERROR_OUT_OF_DATE_KHR) {
     char detail[96];

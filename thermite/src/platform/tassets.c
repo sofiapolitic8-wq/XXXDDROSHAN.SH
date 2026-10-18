@@ -1,7 +1,7 @@
 #include "tassets.h"
 
 /* Wyrm Desktop reads app/res straight from disk. */
-#if defined(WYRM_SDL_JNI) && !defined(WYRM_DESKTOP)
+#if defined(DAVID_SDL_JNI) && !defined(DAVID_DESKTOP)
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
