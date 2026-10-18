@@ -69,37 +69,62 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import json, os, re, time, urllib.request
+          import json, os, re, time, shutil, tarfile, zipfile, urllib.request
           hdr = {'Accept': 'application/vnd.github+json', 'User-Agent': 'DAVID-IO-build',
                  'Authorization': 'Bearer ' + os.environ['GH_TOKEN']}
           def get(url, h, tries=4):
               for i in range(tries):
                   try:
-                      with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=120) as r:
+                      with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=180) as r:
                           return r.read()
                   except Exception as e:
                       print('retry', i + 1, e); time.sleep(5 * (i + 1))
               raise SystemExit('download failed: ' + url)
           release = json.loads(get('https://api.github.com/repos/shader-slang/slang/releases/latest', hdr))
           assets = release.get('assets', [])
-          pick = [a for a in assets if re.search(r'linux.*x86_64.*\.(zip|tar\.gz|tgz)$', a['name'], re.I)]
-          if not pick:
-              raise SystemExit('No Linux x86_64 Slang asset: ' + ', '.join(a['name'] for a in assets))
-          a = pick[0]; print(a['browser_download_url'])
-          open('/tmp/slang-asset', 'wb').write(get(a['browser_download_url'], {'User-Agent': 'DAVID-IO-build'}))
-          open('/tmp/slang-asset-name', 'w').write(a['name'])
+          print('release', release.get('tag_name'))
+          for a in assets: print('  asset:', a['name'])
+          bad = re.compile(r'llvm|glslang|debug|symbols|source|aarch64|arm64|macos|windows|win|wasm', re.I)
+          cands = [a for a in assets
+                   if re.search(r'linux', a['name'], re.I)
+                   and re.search(r'x86[_-]64', a['name'], re.I)
+                   and re.search(r'\.(zip|tar\.gz|tgz)$', a['name'], re.I)
+                   and not bad.search(a['name'])]
+          # plain builds first, glibc-pinned variants last
+          cands.sort(key=lambda a: ('glibc' in a['name'].lower(), len(a['name'])))
+          if not cands:
+              raise SystemExit('No usable Linux x86_64 Slang asset')
+          found = None
+          for a in cands:
+              name = a['name']; print('trying', name)
+              data = get(a['browser_download_url'], {'User-Agent': 'DAVID-IO-build'})
+              path = '/tmp/' + name
+              open(path, 'wb').write(data)
+              dest = '/tmp/slang-' + re.sub(r'\W', '_', name)
+              shutil.rmtree(dest, ignore_errors=True); os.makedirs(dest)
+              if name.lower().endswith('.zip'):
+                  zipfile.ZipFile(path).extractall(dest)
+              else:
+                  tarfile.open(path).extractall(dest)
+              for root, dirs, files in os.walk(dest):
+                  if 'slangc' in files:
+                      found = os.path.join(root, 'slangc'); break
+              if found: break
+              print('  no slangc inside, archive contents:')
+              for root, dirs, files in os.walk(dest):
+                  for f in files[:20]: print('   ', os.path.join(root, f))
+          if not found:
+              raise SystemExit('slangc not found in any candidate archive')
+          os.chmod(found, 0o755)
+          print('slangc =', found)
+          open(os.environ['GITHUB_PATH'], 'a').write(os.path.dirname(found) + '\n')
+          open(os.environ['GITHUB_ENV'], 'a').write('LD_LIBRARY_PATH=' + os.path.dirname(found) + ':' + os.path.join(os.path.dirname(os.path.dirname(found)), 'lib') + '\n')
           PY
-          mkdir -p /tmp/slang-unpack "$HOME/.local/bin"
-          case "$(cat /tmp/slang-asset-name)" in
-            *.zip) unzip -q /tmp/slang-asset -d /tmp/slang-unpack ;;
-            *) tar -xzf /tmp/slang-asset -C /tmp/slang-unpack ;;
-          esac
-          SLANGC="$(find /tmp/slang-unpack -type f -name slangc | head -n 1)"
-          [[ -n "$SLANGC" ]] || { echo "::error::slangc not found in archive"; exit 1; }
-          chmod +x "$SLANGC"
-          # keep slangc next to its shared libraries
-          echo "$(dirname "$SLANGC")" >> "$GITHUB_PATH"
-          "$SLANGC" -version || true
+
+      - name: Check slangc runs
+        run: |
+          which slangc
+          slangc -version || slangc -h | head -5
 
       - name: Compile game shaders
         run: python3 build.py 2
